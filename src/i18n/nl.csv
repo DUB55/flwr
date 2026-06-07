@@ -1,0 +1,40 @@
+id,text
+app_title,AI Foto Bewerker
+subtitle,Lokale portretsegmentatie met schetsbegeleiding
+upload_photo,Foto Uploaden
+single_mode,Enkele Foto
+dual_mode,Dubbele Foto
+upload_foreground,Voorgrond Uploaden
+upload_background,Achtergrond Uploaden
+image_loaded,Foto Geladen
+foreground_loaded,Voorgrond Geladen
+background_loaded,Achtergrond Geladen
+both_images_loaded,Beide Foto's Geladen
+image_dimension_mismatch,Afbeeldingsafmetingen komen niet overeen. Selecteer afbeeldingen met dezelfde afmetingen.
+processing,Verwerken
+segmenting,Segmenteren
+refining,Bijwerken
+blurring,Vervagen
+exporting,Exporteren
+settings,Instellingen
+blur_strength,Vervagingssterkte
+subject_sharpness,Onderwerpsscherpte
+brightness,Helderheid
+desaturation,Verzadiging
+mask_sensitivity,Maskergevoeligheid
+smoothing_strength,Gladmaaksterkte
+blur_type,Vervagingstype
+gaussian,Gaussisch
+radiaal,Radiaal
+diffusie,Difusie
+export,Exporteren
+reprocess,Opnieuw verwerken
+undo,Ongedaan maken
+redo,Opnieuw
+reset,Reset
+show_mask,Masker tonen
+hide_mask,Masker verbergen
+apply_scribbles,Schetsen toepassen
+language,Taal
+english,Engels
+dutch,Nederlands

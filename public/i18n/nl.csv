@@ -1,0 +1,31 @@
+id,text
+app_title,AI Foto Bewerker
+subtitle,Lokale portretsegmentatie met schetsbegeleiding
+upload_photo,Foto Uploaden
+processing,Verwerken
+segmenting,Segmenteren
+refining,Bijwerken
+blurring,Vervagen
+exporting,Exporteren
+settings,Instellingen
+blur_strength,Vervagingssterkte
+subject_sharpness,Onderwerpsscherpte
+brightness,Helderheid
+desaturation,Verzadiging
+mask_sensitivity,Maskergevoeligheid
+smoothing_strength,Gladmaaksterkte
+blur_type,Vervagingstype
+gaussian,Gaussisch
+radiaal,Radiaal
+diffusie,Difusie
+export,Exporteren
+reprocess,Opnieuw verwerken
+ongedaan maken,Ongedaan maken
+opnieuw,Opnieuw
+reset,Reset
+masker tonen,Masker tonen
+masker verbergen,Masker verbergen
+schetsen toepassen,Schetsen toepassen
+taal,Taal
+engels,Engels
+nederlands,Nederlands

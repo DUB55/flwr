@@ -1,0 +1,40 @@
+id,text
+app_title,AI Photo Editor
+subtitle,Local portrait segmentation with scribble guidance
+upload_photo,Upload Photo
+single_mode,Single Photo
+dual_mode,Dual Photo
+upload_foreground,Upload Foreground
+upload_background,Upload Background
+image_loaded,Image Loaded
+foreground_loaded,Foreground Loaded
+background_loaded,Background Loaded
+both_images_loaded,Both Images Loaded
+image_dimension_mismatch,Image dimensions do not match. Please select images with the same dimensions.
+processing,Processing
+segmenting,Segmenting
+refining,Refining
+blurring,Blurring
+exporting,Exporting
+settings,Settings
+blur_strength,Blur Strength
+subject_sharpness,Subject Sharpness
+brightness,Brightness
+desaturation,Desaturation
+mask_sensitivity,Mask Sensitivity
+smoothing_strength,Smoothing Strength
+blur_type,Blur Type
+gaussian,Gaussian
+radial,Radial
+diffusion,Diffusion
+export,Export
+reprocess,Reprocess
+undo,Undo
+redo,Redo
+reset,Reset
+show_mask,Show Mask
+hide_mask,Hide Mask
+apply_scribbles,Apply Scribbles
+language,Language
+english,English
+dutch,Dutch
