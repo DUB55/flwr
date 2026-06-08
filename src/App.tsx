@@ -73,7 +73,6 @@ export default function App() {
   const differenceAnalyzer = useRef<ImageDifferenceAnalyzer>(new ImageDifferenceAnalyzer());
 
   useEffect(() => {
-    segmentationEngine.current.initialize();
     return () => {
       segmentationEngine.current.dispose();
     };
@@ -213,37 +212,68 @@ export default function App() {
     }
   };
 
-  const handleScribble = (point: ScribblePoint) => {
-    // Add confidence based on brush type
-    const confidence = point.type === 'add' ? 0.9 : point.type === 'remove' ? 0.9 : 0.5;
+  const getImageDataRaw = async (source: ImageData): Promise<globalThis.ImageData> => {
+    const img = await loadImage(source.uri);
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width;
+    canvas.height = source.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get canvas context');
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, source.width, source.height);
+  };
+
+  const handleScribbleStroke = (points: ScribblePoint[]) => {
+    if (points.length === 0) return;
     const scribbleData: ScribbleData = {
-      points: [point],
+      points: points.map((point) => ({
+        ...point,
+        confidence: point.type === 'add' ? 0.95 : point.type === 'remove' ? 0.95 : 0.5,
+      })),
       timestamp: Date.now(),
     };
-    setScribbles([...scribbles, scribbleData]);
+    setScribbles((current) => [...current, scribbleData]);
   };
 
   const handleApplyScribbles = async () => {
-    if (!mask || !imageData) return;
+    if (!imageData || scribbles.length === 0) return;
 
     setProcessing({ isProcessing: true, stage: 'refining', progress: 0 });
     
     try {
-      // Use new ScribbleGuidedRefinement pipeline for both manual and AI modes
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setProcessing({ isProcessing: true, stage: 'refining', progress: 20 });
-      
-      const refinedMask = await scribbleGuidedRefinement.current.refine(
-        mask,
-        scribbles,
-        imageData,
-        {
-          colorExpansionStrength: brushMode === 'manual' ? 20 : 30 + (100 - settings.ai.maskSensitivity) / 2,
-          edgeStrictness: settings.ai.edgeStrictness,
-          smoothingIterations: brushMode === 'manual' ? 1 : settings.ai.smoothingStrength + 2,
-        }
+      const baseMask = mask ?? {
+        data: new Uint8Array(imageData.width * imageData.height),
+        width: imageData.width,
+        height: imageData.height,
+        isProbability: false,
+      };
+      const imageDataRaw = await getImageDataRaw(imageData);
+      const points = scribbles.flatMap((stroke) => stroke.points);
+
+      setProcessing({ isProcessing: true, stage: 'refining', progress: 35 });
+
+      let refinedMask = maskRefineEngine.current.applyScribbles(
+        baseMask,
+        points,
+        brushSize,
+        imageDataRaw
       );
+
+      if (brushMode === 'ai') {
+        setProcessing({ isProcessing: true, stage: 'refining', progress: 70 });
+        refinedMask = await scribbleGuidedRefinement.current.refine(
+          refinedMask,
+          scribbles,
+          imageData,
+          {
+            colorExpansionStrength: 24 + (100 - settings.ai.maskSensitivity) / 3,
+            edgeStrictness: settings.ai.edgeStrictness,
+            smoothingIterations: Math.max(1, settings.ai.smoothingStrength),
+          }
+        );
+      } else {
+        refinedMask = maskRefineEngine.current.smoothMask(refinedMask, 1);
+      }
       
       setMask(refinedMask);
       setScribbles([]);
@@ -373,10 +403,10 @@ export default function App() {
         <CanvasEditor
           imageUri={imageUri}
           mask={mask}
-          scribbles={scribbles.flatMap(s => s.points)}
+          scribbleStrokes={scribbles}
           brushType={brushType}
           brushSize={brushSize}
-          onScribble={handleScribble}
+          onScribbleStroke={handleScribbleStroke}
           showMask={showMask}
           showProbabilityMask={showProbabilityMask}
           showEdgeMap={showEdgeMap}

@@ -1,14 +1,14 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { MaskData, ScribblePoint, BrushType } from '../types';
+import { MaskData, ScribblePoint, ScribbleData, BrushType } from '../types';
 
 interface CanvasEditorProps {
   imageUri: string;
   mask: MaskData | null;
-  scribbles: ScribblePoint[];
+  scribbleStrokes: ScribbleData[];
   brushType: BrushType;
   brushSize: number;
-  onScribble: (point: ScribblePoint) => void;
+  onScribbleStroke: (points: ScribblePoint[]) => void;
   showMask: boolean;
   showProbabilityMask?: boolean;
   showEdgeMap?: boolean;
@@ -18,10 +18,10 @@ interface CanvasEditorProps {
 export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   imageUri,
   mask,
-  scribbles,
+  scribbleStrokes,
   brushType,
   brushSize,
-  onScribble,
+  onScribbleStroke,
   showMask,
   showProbabilityMask = false,
   showEdgeMap = false,
@@ -29,10 +29,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scribbleCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const isDrawingRef = useRef(false);
+  const activeStrokeRef = useRef<ScribblePoint[]>([]);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -54,7 +55,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
     if (imageLoaded) {
       render();
     }
-  }, [mask, scribbles, showMask, showProbabilityMask, showEdgeMap, showScribbleOverlay]);
+  }, [mask, scribbleStrokes, showMask, showProbabilityMask, showEdgeMap, showScribbleOverlay]);
 
   const render = () => {
     requestAnimationFrame(() => {
@@ -185,18 +186,9 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
       if (scribbleCtx) {
         scribbleCtx.clearRect(0, 0, scribbleCanvas.width, scribbleCanvas.height);
         
-        // Group scribbles by type and draw as continuous lines
-        const scribblesByType = scribbles.reduce((acc, scribble) => {
-          if (!acc[scribble.type]) {
-            acc[scribble.type] = [];
-          }
-          acc[scribble.type].push(scribble);
-          return acc;
-        }, {} as Record<BrushType, ScribblePoint[]>);
-
-        Object.entries(scribblesByType).forEach(([type, points]) => {
-          if (points.length === 0) return;
-
+        for (const stroke of scribbleStrokes) {
+          if (stroke.points.length === 0) continue;
+          const type = stroke.points[0].type;
           scribbleCtx.lineCap = 'round';
           scribbleCtx.lineJoin = 'round';
           scribbleCtx.lineWidth = brushSize;
@@ -209,48 +201,21 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
             scribbleCtx.strokeStyle = 'rgba(255, 255, 255, 1)';
           }
 
-          // Draw strokes separately to avoid connecting different strokes
-          let currentStroke: ScribblePoint[] = [];
-          const MAX_DISTANCE = 30; // Maximum distance to consider points as part of the same stroke
-
-          for (let i = 0; i < points.length; i++) {
-            const point = points[i];
-            
-            if (currentStroke.length === 0) {
-              currentStroke.push(point);
-            } else {
-              const lastPoint = currentStroke[currentStroke.length - 1];
-              const distance = Math.sqrt(
-                Math.pow(point.x - lastPoint.x, 2) + Math.pow(point.y - lastPoint.y, 2)
-              );
-              
-              if (distance > MAX_DISTANCE) {
-                // End current stroke and start a new one
-                if (currentStroke.length > 0) {
-                  scribbleCtx.beginPath();
-                  scribbleCtx.moveTo(currentStroke[0].x, currentStroke[0].y);
-                  for (let j = 1; j < currentStroke.length; j++) {
-                    scribbleCtx.lineTo(currentStroke[j].x, currentStroke[j].y);
-                  }
-                  scribbleCtx.stroke();
-                }
-                currentStroke = [point];
-              } else {
-                currentStroke.push(point);
-              }
-            }
-          }
-
-          // Draw the last stroke
-          if (currentStroke.length > 0) {
+          if (stroke.points.length === 1) {
+            const point = stroke.points[0];
             scribbleCtx.beginPath();
-            scribbleCtx.moveTo(currentStroke[0].x, currentStroke[0].y);
-            for (let j = 1; j < currentStroke.length; j++) {
-              scribbleCtx.lineTo(currentStroke[j].x, currentStroke[j].y);
+            scribbleCtx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+            scribbleCtx.fillStyle = scribbleCtx.strokeStyle;
+            scribbleCtx.fill();
+          } else {
+            scribbleCtx.beginPath();
+            scribbleCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+            for (let j = 1; j < stroke.points.length; j++) {
+              scribbleCtx.lineTo(stroke.points[j].x, stroke.points[j].y);
             }
             scribbleCtx.stroke();
           }
-        });
+        }
 
         // Draw scribble canvas on main canvas
         ctx.drawImage(scribbleCanvas, 0, 0);
@@ -260,45 +225,99 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    lastPointRef.current = null;
-    // Don't call handlePointerMove immediately to avoid connecting to previous strokes
+    if (!canvasRef.current) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const point = getCanvasPoint(e);
+    if (!point) return;
+
+    isDrawingRef.current = true;
+    lastPointRef.current = point;
+    activeStrokeRef.current = [{ ...point, type: brushType }];
+    drawLivePoint(point, brushType);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
-
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+    if (!isDrawingRef.current || !canvasRef.current) return;
+    e.preventDefault();
+    const point = getCanvasPoint(e);
+    if (!point) return;
 
     // Interpolate between points to avoid holes when moving fast
     if (lastPointRef.current) {
       const lastX = lastPointRef.current.x;
       const lastY = lastPointRef.current.y;
+      const { x, y } = point;
       const distance = Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
-      const stepSize = 2; // Interpolate every 2 pixels
-      const steps = Math.floor(distance / stepSize);
+      const stepSize = Math.max(1, brushSize / 4);
+      const steps = Math.max(1, Math.ceil(distance / stepSize));
 
-      for (let i = 0; i <= steps; i++) {
+      for (let i = 1; i <= steps; i++) {
         const t = i / steps;
         const interpX = lastX + (x - lastX) * t;
         const interpY = lastY + (y - lastY) * t;
-        onScribble({ x: interpX, y: interpY, type: brushType });
+        const interpolatedPoint = { x: interpX, y: interpY };
+        activeStrokeRef.current.push({ ...interpolatedPoint, type: brushType });
+        drawLiveSegment(lastPointRef.current, interpolatedPoint, brushType);
+        lastPointRef.current = interpolatedPoint;
       }
-    } else {
-      onScribble({ x, y, type: brushType });
     }
-
-    lastPointRef.current = { x, y };
   };
 
-  const handlePointerUp = () => {
-    setIsDrawing(false);
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return;
+    e.preventDefault();
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    isDrawingRef.current = false;
     lastPointRef.current = null;
+    if (activeStrokeRef.current.length > 0) {
+      onScribbleStroke(activeStrokeRef.current);
+    }
+    activeStrokeRef.current = [];
+  };
+
+  const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: Math.max(0, Math.min(canvas.width - 1, (e.clientX - rect.left) * scaleX)),
+      y: Math.max(0, Math.min(canvas.height - 1, (e.clientY - rect.top) * scaleY)),
+    };
+  };
+
+  const setBrushStyle = (ctx: CanvasRenderingContext2D, type: BrushType) => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = brushSize;
+    ctx.strokeStyle =
+      type === 'add' ? 'rgba(0, 255, 0, 1)' : type === 'remove' ? 'rgba(255, 0, 0, 1)' : 'rgba(255, 255, 255, 1)';
+    ctx.fillStyle = ctx.strokeStyle;
+  };
+
+  const drawLivePoint = (point: { x: number; y: number }, type: BrushType) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || !showScribbleOverlay) return;
+    setBrushStyle(ctx, type);
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const drawLiveSegment = (from: { x: number; y: number }, to: { x: number; y: number }, type: BrushType) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || !showScribbleOverlay) return;
+    setBrushStyle(ctx, type);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
   };
 
   return (
@@ -310,7 +329,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       />
       <canvas
         ref={scribbleCanvasRef}

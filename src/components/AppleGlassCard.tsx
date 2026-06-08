@@ -22,26 +22,26 @@ export const AppleGlassCard: React.FC<AppleGlassCardProps> = ({
       case 'ultraThin':
         return {
           backdropFilter: 'blur(10px) saturate(200%)',
-          webkitBackdropFilter: 'blur(10px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(10px) saturate(200%)',
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.40)' : 'rgba(255, 255, 255, 0.35)',
         };
       case 'regular':
         return {
           backdropFilter: 'blur(30px) saturate(180%)',
-          webkitBackdropFilter: 'blur(30px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.80)' : 'rgba(255, 255, 255, 0.75)',
         };
       case 'thick':
         return {
           backdropFilter: 'blur(50px) saturate(160%)',
-          webkitBackdropFilter: 'blur(50px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(50px) saturate(160%)',
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.92)' : 'rgba(242, 242, 247, 0.85)',
         };
       case 'thin':
       default:
         return {
           backdropFilter: 'blur(20px) saturate(190%)',
-          webkitBackdropFilter: 'blur(20px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(190%)',
           backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.60)',
         };
     }

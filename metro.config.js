@@ -15,7 +15,6 @@ config.transformer = {
       keep_fnames: true,
     },
   },
-  babelTransformerPath: require.resolve('metro-react-native-babel-transformer'),
   getTransformOptions: async () => ({
     transform: {
       experimentalImportSupport: false,

@@ -29,7 +29,7 @@ export class MaskRefineEngine {
       if (changed.size === 0) break;
     }
 
-    return { data: newMask, width, height };
+    return { data: newMask, width, height, isProbability: mask.isProbability };
   }
 
   private propagateToNeighbors(
@@ -171,7 +171,7 @@ export class MaskRefineEngine {
           }
         }
       }
-      return { data: newMask, width, height };
+      return { data: newMask, width, height, isProbability: mask.isProbability };
     }
 
     // High-quality pattern recognition algorithm
@@ -324,7 +324,7 @@ export class MaskRefineEngine {
       }
     }
 
-    return { data: newMask, width, height };
+    return { data: newMask, width, height, isProbability: mask.isProbability };
   }
 
   // Smooth mask using morphological operations
@@ -362,6 +362,6 @@ export class MaskRefineEngine {
       currentMask = newMask;
     }
 
-    return { data: currentMask, width, height };
+    return { data: currentMask, width, height, isProbability: mask.isProbability };
   }
 }

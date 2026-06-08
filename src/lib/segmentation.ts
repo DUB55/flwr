@@ -95,6 +95,7 @@ export class SegmentationEngine {
       data: maskData,
       width: imageElement.width,
       height: imageElement.height,
+      isProbability: false,
     };
   }
 
